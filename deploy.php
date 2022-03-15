@@ -18,6 +18,8 @@ class Deploy
 
     private const CONFIG_PATH = 'deploy-config.json';
 
+    private const DEPLOY_PATH = './deploy';
+
 
     public function init(string $name, string $repository): void
     {
@@ -37,33 +39,37 @@ class Deploy
     // `$branch` can also be a tag
     public function prepare(string $name, string $branch): void
     {
-        $directory = "{$name}-{$branch}";
+        $package_path = $this->getPackagePath($name, $branch);
 
         $config = $this->getConfigFor($name);
         $repository = $config['repository'];
 
         $specific_branch = $branch ? "--branch {$branch} --single-branch" : '';
 
-        $command = "git clone --depth 1 {$specific_branch} -- {$repository} {$directory}";
+        $user_command = "git clone --depth 1 {$specific_branch} -- {$repository} {$package_path}";
 
-        exec($command);
+        exec($user_command);
+
+        echo "Prepared\n";
     }
 
     // `$branch` can also be a tag
-    function activate(string $name, string $branch): void
+    public function activate(string $name, string $branch): void
     {
         $this->getConfigFor($name); // validate name
 
-        $directory = "{$name}-{$branch}";
+        $package_path = $this->getPackagePath($name, $branch);
 
-        if (is_dir($directory) === false) {
+        if (is_dir($package_path) === false) {
             echo "Invalid activation, run prepare first.";
             exit(1);
         }
 
-        $command = "ln --symbolic --force --no-dereference {$directory} {$name}";
+        $user_command = "ln --symbolic --force --no-dereference {$package_path} {$name}";
 
-        exec($command);
+        exec($user_command);
+
+        echo "Activated\n";
     }
 
     private function getConfigFor(string $name): array
@@ -77,26 +83,32 @@ class Deploy
 
         return $config[$name];
     }
+
+    private function getPackagePath(string $name, string $branch): string
+    {
+        return self::DEPLOY_PATH . "/{$name}-{$branch}";
+    }
 }
 
 
+// Command handling
 
-$command = @$argv[1];
-$arguments = array_slice($argv, 2);
+$user_command = @$argv[1];
+$user_arguments = array_slice($argv, 2);
 
 $class = new ReflectionClass('Deploy');
 
-if ($class->hasMethod($command) === false) {
-    echo "Invalid command: \"{$command}\". \nTry '{$script} --help' for more information. \n";
+if ($class->hasMethod($user_command) === false) {
+    echo "Invalid command: \"{$user_command}\". \nTry '{$script} --help' for more information. \n";
     exit(1);
 }
 
 
-$method = $class->getMethod($command);
+$method = $class->getMethod($user_command);
 $number_required_params = $method->getNumberOfRequiredParameters();
 
-if ($number_required_params > count($arguments)) {
-    echo "Invalid number of arguments for \"{$command}\"; ";
+if ($number_required_params > count($user_arguments)) {
+    echo "Invalid number of arguments for \"{$user_command}\"; ";
     foreach ($method->getParameters() as $parameter) {
         echo "<{$parameter->getName()}> ";
     }
@@ -104,4 +116,4 @@ if ($number_required_params > count($arguments)) {
     exit(1);
 }
 
-(new Deploy)->$command(...$arguments);
+(new Deploy)->$user_command(...$user_arguments);

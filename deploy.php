@@ -20,15 +20,19 @@ class Deploy
 
     private const DEPLOY_PATH = './deploy';
 
-
-    public function init(string $name, string $repository): void
+    public function init(string $name, string $repository_url, string $package_webroot = ''): void
     {
 
         $config = json_decode(@file_get_contents(self::CONFIG_PATH) ?: '[]', true);
         $data = json_encode(
             array_merge(
                 $config,
-                [$name => ['repository' => $repository]]
+                [
+                    $name => [
+                        'repository' => $repository_url,
+                        'webroot' => $package_webroot,
+                    ]
+                ]
             ),
             JSON_PRETTY_PRINT
         );
@@ -56,12 +60,12 @@ class Deploy
     // `$branch` can also be a tag
     public function activate(string $name, string $branch): void
     {
-        $this->getConfigFor($name); // validate name
+        $config = $this->getConfigFor($name);
 
-        $package_path = $this->getPackagePath($name, $branch);
+        $package_path = $this->getPackagePath($name, $branch) . "/{$config['webroot']}";
 
         if (is_dir($package_path) === false) {
-            echo "Invalid activation, run prepare first.";
+            echo "Invalid activation, run prepare or init first.";
             exit(1);
         }
 
@@ -110,7 +114,8 @@ $number_required_params = $method->getNumberOfRequiredParameters();
 if ($number_required_params > count($user_arguments)) {
     echo "Invalid number of arguments for \"{$user_command}\"; ";
     foreach ($method->getParameters() as $parameter) {
-        echo "<{$parameter->getName()}> ";
+        $wrapped_parameter = $parameter->isOptional() ? "[{$parameter->getName()}]" : "<{$parameter->getName()}>";
+        echo "{$wrapped_parameter} ";
     }
     echo PHP_EOL;
     exit(1);

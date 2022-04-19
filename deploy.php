@@ -1,18 +1,6 @@
 #!/usr/bin/env php
 <?php
 
-$script = $argv[0];
-
-if (in_array(@$argv[1], array('--help', '-help', '-h', '-?'))) {
-    $help = <<<HELP
- Usage: {$script} init <name> <repository>
- or     {$script} prepare <name> <branch or tag>
- or     {$script} activate <name> <branch or tag>
-HELP;
-    echo $help, PHP_EOL;
-    exit(0);
-}
-
 class Deploy
 {
 
@@ -94,16 +82,31 @@ class Deploy
     }
 }
 
+function help(string $script)
+{
+    $help = <<<HELP
+ Usage: {$script} init <name> <repository>
+ or     {$script} prepare <name> <branch or tag>
+ or     {$script} activate <name> <branch or tag>
+HELP;
+    echo $help, PHP_EOL;
+}
 
 // Command handling
 
+$script = $argv[0];
 $user_command = @$argv[1];
 $user_arguments = array_slice($argv, 2);
+
+if (in_array($user_command, array('--help', '-help', '-h', '-?'))) {
+    help($script);
+    exit(0);
+}
 
 $class = new ReflectionClass('Deploy');
 
 if ($class->hasMethod($user_command) === false) {
-    echo "Invalid command: \"{$user_command}\". \nTry '{$script} --help' for more information. \n";
+    help($script);
     exit(1);
 }
 
